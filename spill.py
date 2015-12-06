@@ -313,12 +313,11 @@ class Highscore(object):
         
         print "---------------"
         print "  HIGHSCORES:  "
-        print " Nr.\t Initials\tLevel"
+        print " Nr.\t\tInitials\tLevel"
         
         for i, user in enumerate(sorted_highscores):
-            print "%i.\t\%s\t\%s" %(i+1, user[0], user[1])
-
-        print "Press C to clear highscores:"        
+            print " %i.\t\t%s\t\t%s" %(i+1, user[0], user[1])
+       
         clear = raw_input("> ")
         
         if clear.lower() == "c":
@@ -354,11 +353,11 @@ class Highscore(object):
         
         while True:
             initials = raw_input("> ")
-            if len(initials) == 3:
+            if 1 <= len(initials) <= 3:
                 return initials
             else:
                 print "Initals must be 3 characters."
-                time.slee(2)
+                time.sleep(2)
         
     def load_highscores(self, score_file):
         
