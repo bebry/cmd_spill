@@ -246,10 +246,7 @@ class Engine(object):
             e_x = enemy.X
             e_y = enemy.Y
 
-            if p_x - radius <= e_x <= p_x + radius:
-                return True
-                
-            elif p_y - radius <= e_y <= p_y + radius:
+            if p_x - radius <= e_x <= p_x + radius and p_y - radius <= e_y <= p_y + radius:
                 return True
                    
         return False
