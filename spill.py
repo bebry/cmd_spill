@@ -17,8 +17,8 @@ class Board(object):
 
     def __init__(self):
 
-        self.layout = "................."
-        self.board_length = 30
+        self.layout = "-----------------"
+        self.board_length = 50
         self.basic_board = [self.layout for i in range(self.board_length)]
 
     def pos_update(self,items):
@@ -50,18 +50,18 @@ class Board(object):
 
     def game_over(self, level):
 
-        print "----------------- "
-        print "     GAME OVER    "
-        print " You Reaced Level:"
-        print "        %i        " %level
-        print "------------------"
+        print "------------------ "
+        print "     GAME OVER     "
+        print " You Reached Level:"
+        print "        %i         " %level
+        print "-------------------"
         time.sleep(2)
 
 
     def next_level(self):
 
         print "------------------------------------"
-        print "              CONGRATUATIONS!       "
+        print "          CONGRATULATIONS!          "
         print "     YOU REACHED THE NEXT LEVEL!    "
         print "------------------------------------"
         time.sleep(2)
@@ -100,7 +100,7 @@ class Enemy(object):
         self.symbol = "O"
         self.X = x
         self.Y = y
-        self.move_increment = 30
+        self.move_increment = random.randint(20,40)
         self.move_check = 0
 
     def move(self, board):
@@ -108,9 +108,21 @@ class Enemy(object):
         if self.move_check >= self.move_increment:
 
             yinc = 1
-
-            if board.check_pos(self.X, self.Y + yinc):
+            
+            if random.randint(0,1):
+                xinc = 1
+            
+            else:
+                xinc = -1
+                
+            if board.check_pos(self.X + xinc, self.Y + yinc):
+               
                 self.Y += yinc
+                self.X += xinc
+                
+                if random.randint(0,10) <= 2:
+                    self.increase_speed()
+                
             else:
                 self.Y = 0
                 self.increase_speed()
@@ -132,9 +144,14 @@ class Engine(object):
         self.board = board
         self.kb = KBHit.KBHit()
         self.player = Player(len(board.layout)/2,board.board_length-1)
-        self.enemies = [Enemy(5,0)]
+        
+        # Enemy settings
+        self.num_init_enemies = 15
+        self.spawn_radius = 2
+        self.enemies = self.spawn_multiple_enemies(self.num_init_enemies)
         self.enemy_spawn_rate = 10.0
         self.spawn_timer = 0
+
         self.level = 1
         self.highscore = Highscore()
         self.menu = Menu(self.highscore)
@@ -152,7 +169,8 @@ class Engine(object):
                 self.enemy_spawn_rate = self.enemy_spawn_rate*0.8
                 self.level += 1
                 self.player.Y = board.board_length-1
-                self.enemies = []
+                self.num_init_enemies += 2
+                self.enemies = self.spawn_multiple_enemies(self.num_init_enemies)
             
             # Game over
             if self.collision(self.player, self.enemies):
@@ -170,7 +188,7 @@ class Engine(object):
             # Spawn enemies
             if self.spawn_timer >= self.enemy_spawn_rate:
 
-                new_enemy = self.add_enemy()
+                new_enemy = self.spawn_enemy()
                 self.enemies.append(new_enemy)
                 self.spawn_timer = 0
 
@@ -183,18 +201,29 @@ class Engine(object):
 
             time.sleep(self.tick)
 
-    def add_enemy(self):
-
-        x = random.randrange(0, len(self.board.layout))
-        y = random.randrange(0, self.board.board_length)
-        new_enemy = Enemy(x,y)
+    def spawn_enemy(self):
 
         collision = True
+        
         while collision:
-            if not self.collision(self.player, [new_enemy]):
+            
+            x = random.randrange(0, len(self.board.layout))
+            y = random.randrange(0, self.board.board_length)
+            new_enemy = Enemy(x,y)
+            
+            if not self.collision_radius(self.player, [new_enemy], self.spawn_radius):
                 collision = False
 
         return new_enemy
+
+    def spawn_multiple_enemies(self, number):
+        
+        new_enemies = []        
+                
+        for i in range(number):
+            new_enemies.append(self.spawn_enemy())
+            
+        return new_enemies            
 
     def next_level(self):
         if self.player.Y == 0:
@@ -206,7 +235,25 @@ class Engine(object):
             if player.X == enemy.X and player.Y == enemy.Y:
                 return True
         return False
+        
+    def collision_radius(self, player, enemies, radius):
+        
+        p_x = player.X
+        p_y = player.Y        
+        
+        for enemy in enemies:
+            
+            e_x = enemy.X
+            e_y = enemy.Y
 
+            if p_x - radius <= e_x <= p_x + radius:
+                return True
+                
+            elif p_y - radius <= e_y <= p_y + radius:
+                return True
+                   
+        return False
+        
     def check_arrow(self):
         try:
             arrow = self.kb.getarrow()
@@ -265,7 +312,7 @@ class Highscore(object):
 
     def print_highscore(self):
         
-        sorted_highscores = self.sort_dict(self.scores)
+        sorted_highscores = sorted(self.scores, key = lambda tup: tup[1], reverse = True)
         
         print "---------------"
         print "  HIGHSCORES:  "
@@ -286,32 +333,35 @@ class Highscore(object):
     
     def check_result(self, level):
         
-        scores = self.sort_dict(self.scores)
+        scores = self.scores
+        scores = sorted(scores, key = lambda tup: tup[1], reverse = True)
         
         for i, score in enumerate(scores):
             
-            if level > score:
-                initials = new_highscore()
-                scores = scores[:i] + [[initials, level]] + scores[i:]
+            if level > score[1]:
+                initials = self.new_highscore()
+                scores = scores[:i] + [(initials, level)] + scores[i:]
                 scores.pop()
-                self.scores = dict(scores)
+                self.scores = scores
                 self.save_highscores()
-        
-            
-    def save_highcores(self):
-        with open(self.highscore_file, "w") as fp:
-            json.dump(self.scores)
+                return
 
-    def new_highscore():
+            
+    def save_highscores(self):
+        with open(self.highscore_file, "w") as fp:
+            json.dump(self.scores, fp)
+
+    def new_highscore(self):
         print "Congratulations you made a Highscore!"
         print "Enter initials:"
         
         while True:
             initials = raw_input("> ")
-            if len(initals) == 3:
+            if len(initials) == 3:
                 return initials
             else:
                 print "Initals must be 3 characters."
+                time.slee(2)
         
     def load_highscores(self, score_file):
         
@@ -321,27 +371,19 @@ class Highscore(object):
         
         return scores
 
-    def sort_dict(self, dict_to_sort):
-        
-        # Returns the dicts as a nested list sorted on value with the value as
-        # item 2 and the key as item 1
-        
-        sort_d = sorted(dict_to_sort, key = itemgetter(1), reverse = True) 
-        return sort_d 
-
     def clear_highscores(self):
         
-        default_highscore = {"NN1" : 0,
-                             "NN2" : 0,
-                             "NN3" : 0,
-                             "NN4" : 0,
-                             "NN5" : 0,
-                             "NN6" : 0,
-                             "NN7" : 0,
-                             "NN8" : 0,
-                             "NN9" : 0,
-                             "NN0" : 0,
-                         }
+        default_highscore = [("NN1" , 0),
+                             ("NN2" , 0),
+                             ("NN3" , 0),
+                             ("NN4" , 0),
+                             ("NN5" , 0),
+                             ("NN6" , 0),
+                             ("NN7" , 0),
+                             ("NN8" , 0),
+                             ("NN9" , 0),
+                             ("NN0" , 0),
+                         ]
         print "Clearing Highscores"
         time.sleep(1)
         with open(self.highscore_file,"w") as fp:            
